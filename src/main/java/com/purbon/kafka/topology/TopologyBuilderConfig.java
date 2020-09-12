@@ -4,7 +4,6 @@ import static com.purbon.kafka.topology.BuilderCLI.ADMIN_CLIENT_CONFIG_OPTION;
 import static com.purbon.kafka.topology.BuilderCLI.BROKERS_OPTION;
 import static com.purbon.kafka.topology.BuilderCLI.DRY_RUN_OPTION;
 import static com.purbon.kafka.topology.BuilderCLI.QUIET_OPTION;
-import static com.purbon.kafka.topology.KafkaTopologyBuilder.SCHEMA_REGISTRY_URL;
 
 import com.purbon.kafka.topology.exceptions.ConfigurationException;
 import com.purbon.kafka.topology.model.Project;
@@ -54,6 +53,9 @@ public class TopologyBuilderConfig {
       "topology.builder.mds.schema.registry.cluster.id";
   public static final String MDS_KC_CLUSTER_ID_CONFIG =
       "topology.builder.mds.kafka.connect.cluster.id";
+
+  public static final String CONFLUENT_SCHEMA_REGISTRY_URL_CONFIG = "confluent.schema.registry.url";
+  public static final String CONFLUENT_SCHEMA_REGISTRY_URL_DEFAULT = "http://localhost:8082";
 
   public static final String CONFLUENT_MONITORING_TOPIC_CONFIG = "confluent.monitoring.topic";
   public static final String CONFLUENT_MONITORING_TOPIC_DEFAULT = "_confluent-monitoring";
@@ -117,7 +119,7 @@ public class TopologyBuilderConfig {
 
   public void validateGeneralConfiguration(Topology topology) throws ConfigurationException {
     if (countOfSchemas(topology) > 0) {
-      raiseIfNull(SCHEMA_REGISTRY_URL);
+      raiseIfNull(CONFLUENT_SCHEMA_REGISTRY_URL_CONFIG);
     }
   }
 
@@ -157,6 +159,12 @@ public class TopologyBuilderConfig {
 
   public Object getOrDefault(Object key, Object _default) {
     return properties.getOrDefault(key, _default);
+  }
+
+  public String getConfluentSchemaRegistryUrl() {
+    return properties
+        .getOrDefault(CONFLUENT_SCHEMA_REGISTRY_URL_CONFIG, CONFLUENT_SCHEMA_REGISTRY_URL_DEFAULT)
+        .toString();
   }
 
   public String getConfluentMonitoringTopic() {

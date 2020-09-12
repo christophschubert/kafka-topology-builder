@@ -22,8 +22,6 @@ import java.util.Properties;
 
 public class KafkaTopologyBuilder implements AutoCloseable {
 
-  public static final String SCHEMA_REGISTRY_URL = "confluent.schema.registry.url";
-
   private TopicManager topicManager;
   private AccessControlManager accessControlManager;
   private Topology topology;
@@ -71,9 +69,8 @@ public class KafkaTopologyBuilder implements AutoCloseable {
     AccessControlManager accessControlManager =
         new AccessControlManager(accessControlProvider, cs, config.params());
 
-    String schemaRegistryUrl = (String) config.getOrDefault(SCHEMA_REGISTRY_URL, "http://foo:8082");
     SchemaRegistryClient schemaRegistryClient =
-        new CachedSchemaRegistryClient(schemaRegistryUrl, 10);
+        new CachedSchemaRegistryClient(config.getConfluentSchemaRegistryUrl(), 10);
     SchemaRegistryManager schemaRegistryManager = new SchemaRegistryManager(schemaRegistryClient);
 
     TopicManager topicManager = new TopicManager(adminClient, schemaRegistryManager, config);
