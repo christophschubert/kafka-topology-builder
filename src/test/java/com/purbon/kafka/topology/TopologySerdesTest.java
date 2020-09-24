@@ -48,13 +48,18 @@ public class TopologySerdesTest {
     URL descriptorWithOptionals = getClass().getResource("/descriptor-with-others.yml");
 
     Topology topology = parser.deserialise(Paths.get(descriptorWithOptionals.toURI()).toFile());
-    assertEquals("contextOrg.source.foo.bar.zet", topology.buildNamePrefix());
+    ;
+    assertEquals(
+        "contextOrg.source.foo.bar.zet.foo",
+        topology.buildProjectTopicPrefix(topology.getProjects().get(0)));
 
     URL descriptorWithoutOptionals = getClass().getResource("/descriptor.yaml");
 
     Topology anotherTopology =
         parser.deserialise(Paths.get(descriptorWithoutOptionals.toURI()).toFile());
-    assertEquals("contextOrg.source", anotherTopology.buildNamePrefix());
+    assertEquals(
+        "contextOrg.source.foo",
+        anotherTopology.buildProjectTopicPrefix(anotherTopology.getProjects().get(0)));
   }
 
   @Test
@@ -143,7 +148,7 @@ public class TopologySerdesTest {
     Topology topology = new TopologyImpl();
     topology.setContext("team");
 
-    project.setTopologyPrefix(topology.buildNamePrefix());
+    // project.setTopologyPrefix(topology.buildNamePrefix());
     topology.addProject(project);
 
     Topic topic = new TopicImpl("foo", "json");

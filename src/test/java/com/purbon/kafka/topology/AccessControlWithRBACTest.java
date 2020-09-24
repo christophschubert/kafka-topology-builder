@@ -53,12 +53,14 @@ public class AccessControlWithRBACTest {
     Topology topology = new TopologyImpl();
     topology.addProject(project);
 
-    when(aclsProvider.setPredefinedRole("User:Foo", "ResourceOwner", project.buildTopicPrefix()))
+    when(aclsProvider.setPredefinedRole(
+            "User:Foo", "ResourceOwner", topology.buildProjectTopicPrefix(project)))
         .thenReturn(new TopologyAclBinding());
 
     accessControlManager.sync(topology);
 
     verify(aclsProvider, times(1))
-        .setPredefinedRole(eq("User:Foo"), eq("ResourceOwner"), eq(project.buildTopicPrefix()));
+        .setPredefinedRole(
+            eq("User:Foo"), eq("ResourceOwner"), eq(topology.buildProjectTopicPrefix(project)));
   }
 }

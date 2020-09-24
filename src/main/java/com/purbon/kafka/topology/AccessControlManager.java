@@ -122,7 +122,7 @@ public class AccessControlManager {
                     .forEachOrdered(action -> plan.add(action));
               });
       // Setup global Kafka Stream Access control lists
-      String topicPrefix = project.buildTopicPrefix(topology.buildNamePrefix());
+      String topicPrefix = topology.buildProjectTopicPrefix(project);
       for (KStream app : project.getStreams()) {
         Action action = syncApplicationAcls(app, topicPrefix);
         plan.add(action);

@@ -1,27 +1,24 @@
 package com.purbon.kafka.topology.model.Impl;
 
-import com.purbon.kafka.topology.model.Platform;
-import com.purbon.kafka.topology.model.Project;
-import com.purbon.kafka.topology.model.Topology;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import com.purbon.kafka.topology.model.*;
+import java.util.*;
 
 public class TopologyImpl implements Topology, Cloneable {
 
+  private final String topicNameComponentSeparator = ".";
+  private final TopicNamingStrategy topicNamingStrategy = new FullPathStrategy(".");
+
   private String context;
 
-  private Map<String, String> others;
+  // we rely on insertion order to elements
+  private LinkedHashMap<String, String> others;
 
   private List<Project> projects;
-  private List<String> order;
   private Platform platform;
 
   public TopologyImpl() {
     this.context = "default";
-    this.others = new HashMap<>();
-    this.order = new ArrayList<>();
+    this.others = new LinkedHashMap<>();
     this.projects = new ArrayList<>();
     this.platform = new Platform();
   }
@@ -39,32 +36,36 @@ public class TopologyImpl implements Topology, Cloneable {
   }
 
   public void addProject(Project project) {
-    project.setTopologyPrefix(buildNamePrefix());
+    project.setTopology(this);
     this.projects.add(project);
   }
 
   public void setProjects(List<Project> projects) {
-    this.projects = projects;
-  }
-
-  public String buildNamePrefix() {
-    StringBuilder sb = new StringBuilder();
-    sb.append(getContext());
-    for (String key : order) {
-      String value = others.get(key);
-      sb.append(".");
-      sb.append(value);
-    }
-    return sb.toString();
+    this.projects = new ArrayList<>(projects);
+    this.projects.forEach(project -> project.setTopology(this));
   }
 
   public void addOther(String fieldName, String value) {
-    order.add(fieldName);
     others.put(fieldName, value);
+  }
+
+  @Override
+  public LinkedHashMap<String, String> otherNameComponents() {
+    return others;
   }
 
   public void setPlatform(Platform platform) {
     this.platform = platform;
+  }
+
+  @Override
+  public String buildQualifiedTopicName(Topic topic) {
+    return topicNamingStrategy.buildTopicName(topic);
+  }
+
+  @Override
+  public String buildProjectTopicPrefix(Project project) {
+    return topicNamingStrategy.buildTopicPrefix(project);
   }
 
   public Platform getPlatform() {

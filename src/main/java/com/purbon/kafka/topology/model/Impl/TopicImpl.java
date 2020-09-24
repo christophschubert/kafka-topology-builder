@@ -1,13 +1,13 @@
 package com.purbon.kafka.topology.model.Impl;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.purbon.kafka.topology.TopicManager;
+import com.purbon.kafka.topology.model.Project;
 import com.purbon.kafka.topology.model.Topic;
 import com.purbon.kafka.topology.model.TopicSchemas;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 public class TopicImpl implements Topic, Cloneable {
 
@@ -26,6 +26,8 @@ public class TopicImpl implements Topic, Cloneable {
   private int partitionCount;
   private int replicationFactor;
 
+  private Project project;
+
   private String projectPrefix;
 
   public TopicImpl(String name) {
@@ -42,6 +44,7 @@ public class TopicImpl implements Topic, Cloneable {
     this.config = config;
     this.replicationFactor = 0;
     this.partitionCount = 0;
+    this.project = null;
   }
 
   public TopicImpl() {
@@ -60,20 +63,9 @@ public class TopicImpl implements Topic, Cloneable {
     this.schemas = schemas;
   }
 
-  private String toString(String projectPrefix) {
-    StringBuilder sb = new StringBuilder();
-    sb.append(projectPrefix).append(".").append(getName());
-
-    if (getDataType().isPresent()) {
-      sb.append(".").append(getDataType().get());
-    }
-
-    return sb.toString();
-  }
-
   @Override
   public String toString() {
-    return toString(projectPrefix);
+    return project.getTopology().buildQualifiedTopicName(this);
   }
 
   public void setName(String name) {
@@ -104,12 +96,15 @@ public class TopicImpl implements Topic, Cloneable {
     return dataType;
   }
 
-  public void setProjectPrefix(String projectPrefix) {
-    this.projectPrefix = projectPrefix;
+  @JsonIgnore
+  @Override
+  public Project getProject() {
+    return project;
   }
 
-  public String getProjectPrefix() {
-    return projectPrefix;
+  @Override
+  public void setProject(Project project) {
+    this.project = project;
   }
 
   @Override

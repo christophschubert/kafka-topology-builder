@@ -6,12 +6,9 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.purbon.kafka.topology.model.Impl.ProjectImpl;
-import com.purbon.kafka.topology.model.Project;
-import com.purbon.kafka.topology.model.Topic;
 import com.purbon.kafka.topology.model.Topology;
 import java.io.File;
 import java.io.IOException;
-import java.util.function.Consumer;
 
 public class TopologySerdes {
 
@@ -28,38 +25,14 @@ public class TopologySerdes {
   }
 
   public Topology deserialise(File file) throws IOException {
-    Topology topology = mapper.readValue(file, Topology.class);
-    return updateTopology(topology);
+    return mapper.readValue(file, Topology.class);
   }
 
   public Topology deserialise(String content) throws IOException {
-    Topology topology = mapper.readValue(content, Topology.class);
-    return updateTopology(topology);
+    return mapper.readValue(content, Topology.class);
   }
 
   public String serialise(Topology topology) throws JsonProcessingException {
     return mapper.writeValueAsString(topology);
-  }
-
-  private Topology updateTopology(Topology topology) {
-    topology
-        .getProjects()
-        .forEach(
-            new Consumer<Project>() {
-              @Override
-              public void accept(Project project) {
-                project.setTopologyPrefix(topology.buildNamePrefix());
-                project
-                    .getTopics()
-                    .forEach(
-                        new Consumer<Topic>() {
-                          @Override
-                          public void accept(Topic topic) {
-                            topic.setProjectPrefix(project.buildTopicPrefix());
-                          }
-                        });
-              }
-            });
-    return topology;
   }
 }

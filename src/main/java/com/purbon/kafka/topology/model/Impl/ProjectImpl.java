@@ -1,7 +1,9 @@
 package com.purbon.kafka.topology.model.Impl;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.purbon.kafka.topology.model.Project;
 import com.purbon.kafka.topology.model.Topic;
+import com.purbon.kafka.topology.model.Topology;
 import com.purbon.kafka.topology.model.users.Connector;
 import com.purbon.kafka.topology.model.users.Consumer;
 import com.purbon.kafka.topology.model.users.KStream;
@@ -26,7 +28,7 @@ public class ProjectImpl implements Project, Cloneable {
 
   private List<Topic> topics;
 
-  private String topologyPrefix;
+  private Topology topology;
 
   public ProjectImpl() {
     this("default");
@@ -98,30 +100,29 @@ public class ProjectImpl implements Project, Cloneable {
   }
 
   public void addTopic(Topic topic) {
-    topic.setProjectPrefix(buildTopicPrefix());
+    topic.setProject(this);
     this.topics.add(topic);
   }
 
   public void setTopics(List<Topic> topics) {
-    this.topics = topics;
+    this.topics = new ArrayList<>(topics);
+    this.topics.forEach(topic -> topic.setProject(this));
   }
 
-  public String buildTopicPrefix() {
-    return buildTopicPrefix(topologyPrefix);
+  @Override
+  public String getTopicPrefix() {
+    return topology.buildProjectTopicPrefix(this);
   }
 
-  public String buildTopicPrefix(String topologyPrefix) {
-    StringBuilder sb = new StringBuilder();
-    sb.append(topologyPrefix).append(".").append(name);
-    return sb.toString();
+  @JsonIgnore
+  @Override
+  public Topology getTopology() {
+    return topology;
   }
 
-  public void setTopologyPrefix(String topologyPrefix) {
-    this.topologyPrefix = topologyPrefix;
-  }
-
-  public String getTopologyPrefix() {
-    return topologyPrefix;
+  @Override
+  public void setTopology(Topology topology) {
+    this.topology = topology;
   }
 
   public void setRbacRawRoles(Map<String, List<String>> rbacRawRoles) {
@@ -145,7 +146,7 @@ public class ProjectImpl implements Project, Cloneable {
       project.setProducers(getProducers());
       project.setStreams(getStreams());
       project.setTopics(getTopics());
-      project.setTopologyPrefix(getTopologyPrefix());
+      project.setTopology(getTopology());
       project.setZookeepers(getZookeepers());
       return project;
     }

@@ -1,5 +1,6 @@
 package com.purbon.kafka.topology.model;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 
 public interface Topology {
@@ -14,11 +15,15 @@ public interface Topology {
 
   void setProjects(List<Project> projects);
 
-  String buildNamePrefix();
-
   void addOther(String fieldName, String value);
 
+  LinkedHashMap<String, String> otherNameComponents();
+
   void setPlatform(Platform platform);
+
+  String buildQualifiedTopicName(Topic topic);
+
+  String buildProjectTopicPrefix(Project project);
 
   Platform getPlatform();
 

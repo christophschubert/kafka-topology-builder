@@ -25,9 +25,9 @@ public interface Topic {
 
   Optional<String> getDataType();
 
-  void setProjectPrefix(String projectPrefix);
+  Project getProject();
 
-  String getProjectPrefix();
+  void setProject(Project project);
 
   int partitionsCount();
 }

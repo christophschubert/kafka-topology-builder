@@ -47,13 +47,11 @@ public interface Project {
 
   void setTopics(List<Topic> topics);
 
-  String buildTopicPrefix();
+  String getTopicPrefix();
 
-  String buildTopicPrefix(String topologyPrefix);
+  Topology getTopology();
 
-  void setTopologyPrefix(String topologyPrefix);
-
-  String getTopologyPrefix();
+  void setTopology(Topology topology);
 
   void setRbacRawRoles(Map<String, List<String>> rbacRawRoles);
 

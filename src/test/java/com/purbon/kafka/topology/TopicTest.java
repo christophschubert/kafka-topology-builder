@@ -22,7 +22,8 @@ public class TopicTest {
     topology.setContext("team");
 
     project = new ProjectImpl();
-    project.setTopologyPrefix(topology.buildNamePrefix());
+    project.setTopology(topology);
+    // project.setTopologyPrefix(topology.buildNamePrefix());
 
     project.setName("project");
     topology.setProjects(Arrays.asList(project));
@@ -31,9 +32,10 @@ public class TopicTest {
   @Test
   public void buildTopicNameTest() {
     Topic topic = new TopicImpl("topic");
-    topic.setProjectPrefix(project.buildTopicPrefix());
-    String fulllName = topic.toString();
-    Assert.assertEquals("team.project.topic", fulllName);
+    topic.setProject(project);
+    // topic.setProjectPrefix(project.buildTopicPrefix());
+    String fullName = topic.toString();
+    Assert.assertEquals("team.project.topic", fullName);
   }
 
   @Test
@@ -46,22 +48,25 @@ public class TopicTest {
     topology.addOther("another-f", "another");
 
     Project project = new ProjectImpl();
-    project.setTopologyPrefix(topology.buildNamePrefix());
+    project.setTopology(topology);
+    // project.setTopologyPrefix(topology.buildNamePrefix());
 
     project.setName("project");
     topology.setProjects(Arrays.asList(project));
 
     Topic topic = new TopicImpl("topic");
-    topic.setProjectPrefix(project.buildTopicPrefix());
-    String fulllName = topic.toString();
-    Assert.assertEquals("team.other.another.project.topic", fulllName);
+    topic.setProject(project);
+    // topic.setProjectPrefix(project.buildTopicPrefix());
+    String fullName = topic.toString();
+    Assert.assertEquals("team.other.another.project.topic", fullName);
   }
 
   @Test
   public void buildTopicNameWithDataTypeTest() {
     Topic topic = new TopicImpl("topic", "type");
-    topic.setProjectPrefix(project.buildTopicPrefix());
-    String fulllName = topic.toString();
-    Assert.assertEquals("team.project.topic.type", fulllName);
+    topic.setProject(project);
+    // topic.setProjectPrefix(project.buildTopicPrefix());
+    String fullName = topic.toString();
+    Assert.assertEquals("team.project.topic.type", fullName);
   }
 }
