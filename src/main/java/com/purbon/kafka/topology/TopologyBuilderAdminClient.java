@@ -1,38 +1,15 @@
 package com.purbon.kafka.topology;
 
 import com.purbon.kafka.topology.adminclient.AclBuilder;
+import com.purbon.kafka.topology.exceptions.ConfigurationException;
 import com.purbon.kafka.topology.model.Topic;
 import com.purbon.kafka.topology.model.users.Connector;
 import com.purbon.kafka.topology.model.users.Consumer;
 import com.purbon.kafka.topology.model.users.platform.SchemaRegistryInstance;
 import com.purbon.kafka.topology.roles.TopologyAclBinding;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ExecutionException;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.AlterConfigOp;
+import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.clients.admin.AlterConfigOp.OpType;
-import org.apache.kafka.clients.admin.Config;
-import org.apache.kafka.clients.admin.ConfigEntry;
-import org.apache.kafka.clients.admin.ListTopicsOptions;
-import org.apache.kafka.clients.admin.NewPartitions;
-import org.apache.kafka.clients.admin.NewTopic;
-import org.apache.kafka.clients.admin.TopicDescription;
-import org.apache.kafka.common.acl.AccessControlEntry;
-import org.apache.kafka.common.acl.AccessControlEntryFilter;
-import org.apache.kafka.common.acl.AclBinding;
-import org.apache.kafka.common.acl.AclBindingFilter;
-import org.apache.kafka.common.acl.AclOperation;
-import org.apache.kafka.common.acl.AclPermissionType;
+import org.apache.kafka.common.acl.*;
 import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.config.ConfigResource.Type;
 import org.apache.kafka.common.errors.InvalidConfigurationException;
@@ -44,6 +21,12 @@ import org.apache.kafka.common.resource.ResourceType;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 public class TopologyBuilderAdminClient {
 
   private static final Logger LOGGER = LogManager.getLogger(TopologyBuilderAdminClient.class);
@@ -51,9 +34,68 @@ public class TopologyBuilderAdminClient {
   private final AdminClient adminClient;
   private final TopologyBuilderConfig config;
 
+  private Map<String, String> clusterDefaults;
+
   public TopologyBuilderAdminClient(AdminClient adminClient, TopologyBuilderConfig config) {
     this.adminClient = adminClient;
     this.config = config;
+  }
+
+  private Map<String, String> loadClusterConfig() throws ExecutionException, InterruptedException {
+    Map<String, String> brokerLevelConfigs = new HashMap<>();
+
+      final DescribeClusterResult clusterResult = adminClient.describeCluster();
+      if (clusterResult != null) {
+        //get id of an arbitrary node in the cluster
+        final String nodeId = clusterResult.nodes().get().iterator().next().idString();
+        final ConfigResource configResource = new ConfigResource(ConfigResource.Type.BROKER, nodeId);
+        final Config config =
+                adminClient.describeConfigs(Collections.singleton(configResource)).all().get().get(configResource);
+
+        //final Map<String, String> allConfigs = config.entries().stream().collect(Collectors.toMap(ConfigEntry::name, ConfigEntry::value));
+        config.entries().forEach(entry -> brokerLevelConfigs.put(entry.name(), entry.value()));
+
+      } else {
+        LOGGER.error("Could not get node information");
+      }
+
+    return brokerLevelConfigs;
+  }
+
+  public boolean hasMinVersion(String version) {
+    final Optional<String> kafkaVersion = getKafkaVersion();
+    if (!kafkaVersion.isPresent())
+      return false;
+    final String[] kafkaVersions = kafkaVersion.get().split(".");
+    final String[] requiredVersions = version.split(".");
+    final Short kafkaMayor = Short.valueOf(kafkaVersions[0]);
+    final Short requiredMayor = Short.valueOf(requiredVersions[0]);
+    if (kafkaMayor > requiredMayor)
+      return true;
+    if (kafkaMayor < requiredMayor)
+      return false;
+    if (requiredVersions.length == 1)
+      return true;
+    final Short kafkaMinor = Short.valueOf(kafkaVersions[1]);
+    final Short requiredMinor = Short.valueOf(requiredVersions[1]);
+    return kafkaMinor >= requiredMinor;
+  }
+
+  public Optional<String> getKafkaVersion() {
+   return getBrokerConfig("inter.broker.protocol.version")
+           .map(ibp -> ibp.split("-")[0]);
+  }
+
+  public Optional<String> getBrokerConfig(String configName) {
+    if (clusterDefaults == null) {
+      try {
+        clusterDefaults = loadClusterConfig();
+      } catch (ExecutionException | InterruptedException e) {
+        LOGGER.error("Could not load broker configs", e);
+        return Optional.empty();
+      }
+    }
+    return Optional.ofNullable(clusterDefaults.get(configName));
   }
 
   public Set<String> listTopics(ListTopicsOptions options) throws IOException {
@@ -187,19 +229,25 @@ public class TopologyBuilderAdminClient {
   }
 
   public void createTopic(Topic topic, String fullTopicName) throws IOException {
+    final String numPartitionsClusterDefault = getBrokerConfig(TopicManager.NUM_PARTITIONS).orElse("unspecified");
+    final String replicationFactorClusterDefault = getBrokerConfig(TopicManager.REPLICATION_FACTOR).orElse("unspecified");
 
-    int numPartitions =
-        Integer.parseInt(topic.getConfig().getOrDefault(TopicManager.NUM_PARTITIONS, "3"));
-    short replicationFactor =
-        Short.parseShort(topic.getConfig().getOrDefault(TopicManager.REPLICATION_FACTOR, "2"));
-
-    NewTopic newTopic =
-        new NewTopic(fullTopicName, numPartitions, replicationFactor).configs(topic.rawConfig());
-    Collection<NewTopic> newTopics = Collections.singleton(newTopic);
     try {
+      int numPartitions =
+              Integer.parseInt(topic.getConfig().getOrDefault(TopicManager.NUM_PARTITIONS, numPartitionsClusterDefault));
+      short replicationFactor =
+              Short.parseShort(topic.getConfig().getOrDefault(TopicManager.REPLICATION_FACTOR, replicationFactorClusterDefault));
+
+      NewTopic newTopic =
+              new NewTopic(fullTopicName, numPartitions, replicationFactor).configs(topic.rawConfig());
+      Collection<NewTopic> newTopics = Collections.singleton(newTopic);
+
       createAllTopics(newTopics);
-    } catch (TopicExistsException ex) {
-      LOGGER.info(ex);
+    } catch (NumberFormatException e) {
+      LOGGER.error(e);
+      throw new ConfigurationException("missing config info in topic " + fullTopicName + " and broker defaults were not available.");
+    } catch (TopicExistsException e) {
+      LOGGER.info(e);
     } catch (ExecutionException | InterruptedException e) {
       LOGGER.error(e);
       throw new IOException(e);
